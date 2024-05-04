@@ -293,7 +293,7 @@ class tgchessBot(telepot.Bot):
 ############
 # AUTO RUN #
 ############
-telegram_bot_token = "<REMOVED>"
+telegram_bot_token = "6835714119:AAFeEkQrhQgIrhc7eSJqelXUxQXwLjOa_do"
 bot = tgchessBot(telegram_bot_token)
 
 # For persistence

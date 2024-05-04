@@ -1,4 +1,5 @@
 import chess # https://github.com/niklasf/python-chess
+import chess.engine
 from renderer import *
 
 class Match():
@@ -114,6 +115,14 @@ class Match():
         if self.board.is_checkmate(): return "Checkmate"
         elif self.board.is_check(): return "Check"
         elif self.board.is_stalemate(): return "Stalemate"
+
+    def ai_move(self):
+        engine = chess.engine.SimpleEngine.popen_uci("stockfish")
+        limit = chess.engine.Limit(time=1.0)
+        engine.play(self.board, limit)
+        m = engine.play(self.board, limit).move.uci()
+        engine.quit()
+        return m
 
     def offer_draw(self, sender_id):
         '''Offer a draw'''

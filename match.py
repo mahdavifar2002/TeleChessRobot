@@ -146,7 +146,7 @@ class Match():
             orientation=self.board.turn,
             size=390,
             lastmove=self.board.peek() if self.board.move_stack else None,
-            check=self.board.king(self.turn) if self.board.is_check() else None)
+            check=self.board.king(self.board.turn) if self.board.is_check() else None)
 
     # Return an image
     def print_board(self, chat_id):

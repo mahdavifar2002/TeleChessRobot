@@ -3,6 +3,7 @@ import telepot  # https://github.com/nickoala/telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from match import *
+from phrases import text
 
 class tgchessBot(telepot.Bot):
     def __init__(self, *args, **kwargs):
@@ -84,14 +85,23 @@ class tgchessBot(telepot.Bot):
         '''Checks if message sender is involved in the match'''
         return sender_id == players[0] or sender_id == players[2]
 
+    def lang(self, chat_id):
+        try:
+            return self.statslog[chat_id][3]
+        except:
+            return 'en'
+
+    def init_stats(self, player_id, lang='en'):
+        self.statslog[player_id] = [0,0,0, lang]
+
     def game_end(self, chat_id, players, winner):
         '''Handle end of game situation'''
         # Remove match from game logs
         del self.gamelog[chat_id]
 
         # Update player stats [W, D, L] and print results
-        if players[0] not in self.statslog: self.statslog[players[0]] = [0,0,0]
-        if players[2] not in self.statslog: self.statslog[players[2]] = [0,0,0]
+        if players[0] not in self.statslog: self.init_stats(players[0])
+        if players[2] not in self.statslog: self.init_stats(players[2])
         white_stats = self.statslog[players[0]]
         black_stats = self.statslog[players[2]]
 
@@ -134,7 +144,7 @@ class tgchessBot(telepot.Bot):
         self.gamelog[chat_id] = Match(chat_id)
         match = self.gamelog[chat_id]
 
-        bot.sendMessage(chat_id, "Chess match created. {} is playing as {}.".format(sender_username, color), parse_mode = "Markdown")
+        bot.sendMessage(chat_id, text[2][self.lang(chat_id)].format(sender_username, color), parse_mode = "Markdown")
 
         if color == "white":
             match.joinw(sender_id, sender_username)
@@ -162,41 +172,46 @@ class tgchessBot(telepot.Bot):
         match = self.gamelog[chat_id] if chat_id in self.gamelog.keys() else None
         players = match.get_players() if match != None else None
 
-        if tokens[0] == "/start" or tokens[0] == "/start@TeleChessRobot":
-            bot.sendMessage(chat_id, self.startsheet, parse_mode = "Markdown", disable_web_page_preview = True)
-        elif tokens[0] == "/help" or tokens[0] == "/help@TeleChessRobot":
-            bot.sendMessage(chat_id, self.helpsheet, parse_mode = "Markdown", disable_web_page_preview = True)
-        elif tokens[0] == "/undo" or tokens[0] == "/undo@TeleChessRobot":
+        if tokens[0] == "شروع" or tokens[0] == "/start" or tokens[0] == "/start@TeleChessRobot":
+            if sender_id not in self.statslog: self.init_stats(sender_id, 'en')
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text='🇮🇷 فارسی', callback_data='fa'), InlineKeyboardButton(text='🇬🇧 English', callback_data='en')],
+            ])
+
+            bot.sendMessage(chat_id, text[0][self.lang(chat_id)], parse_mode = "Markdown", disable_web_page_preview = True, reply_markup=keyboard)
+        elif tokens[0] == "راهنما" or tokens[0] == "/help" or tokens[0] == "/help@TeleChessRobot":
+            bot.sendMessage(chat_id, text[1][self.lang(chat_id)], parse_mode = "Markdown", disable_web_page_preview = True)
+        elif tokens[0] == "برگشت" or tokens[0] == "/undo" or tokens[0] == "/undo@TeleChessRobot":
             if match == None:
-                bot.sendMessage(chat_id, "There is no chess match going on.")
+                bot.sendMessage(chat_id, text[3][self.lang(chat_id)])
             else:
                 try:
                     match.undo_move()
-                    bot.sendMessage(chat_id, "Undo is done.", parse_mode = "Markdown", disable_web_page_preview = True)
+                    bot.sendMessage(chat_id, text[4][self.lang(chat_id)], parse_mode = "Markdown", disable_web_page_preview = True)
                 except:
-                    bot.sendMessage(chat_id, "Can't undo.", parse_mode = "Markdown", disable_web_page_preview = True)
-        elif tokens[0] == "/level" or tokens[0] == "/level@TeleChessRobot":
+                    bot.sendMessage(chat_id, text[5][self.lang(chat_id)], parse_mode = "Markdown", disable_web_page_preview = True)
+        elif tokens[0] == "سطح" or tokens[0] == "/level" or tokens[0] == "/level@TeleChessRobot":
             if len(tokens) < 2 or not tokens[1].isdigit():
-                bot.sendMessage(chat_id, "Incorrect usage. `Usage: /level <number>`. E.g. `/level 2`", parse_mode='Markdown')
+                bot.sendMessage(chat_id, text[6][self.lang(chat_id)], parse_mode='Markdown')
             elif match == None:
-                bot.sendMessage(chat_id, "There is no chess match going on.")
+                bot.sendMessage(chat_id, text[7][self.lang(chat_id)])
             else:
                 match.level = int(tokens[1])
-                bot.sendMessage(chat_id, "Level updated.")
-        elif tokens[0] == "/create" or tokens[0] == "/create@TeleChessRobot":
+                bot.sendMessage(chat_id, text[8][self.lang(chat_id)])
+        elif tokens[0] == "ایجاد" or tokens[0] == "/create" or tokens[0] == "/create@TeleChessRobot":
             # !create <current player color: white/black>
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text='⬜', callback_data='white'), InlineKeyboardButton(text='⬛', callback_data='black')],
             ])
 
             if match != None:
-                bot.sendMessage(chat_id, "There is already a chess match going on.")
+                bot.sendMessage(chat_id, text[9][self.lang(chat_id)])
             elif len(tokens) < 2:
-                bot.sendMessage(chat_id, "Choose your color:", parse_mode='Markdown', reply_markup=keyboard)
+                bot.sendMessage(chat_id, text[10][self.lang(chat_id)], parse_mode='Markdown', reply_markup=keyboard)
             else:
                 color = tokens[1].lower()
                 if color != "white" and color != "black":
-                    bot.sendMessage(chat_id, "Choose your color:", parse_mode='Markdown', reply_markup=keyboard)
+                    bot.sendMessage(chat_id, text[10][self.lang(chat_id)], parse_mode='Markdown', reply_markup=keyboard)
                 else:
                     self.create_game(chat_id, sender_id, sender_username, color)
         elif tokens[0] == "/join" or tokens[0] == "/join@TeleChessRobot":
@@ -212,8 +227,7 @@ class tgchessBot(telepot.Bot):
                 # Print starting game state
                 filename = match.print_board(chat_id)
                 turn_id = match.get_turn_id()
-                bot.sendPhoto(chat_id, open(filename, "rb"), caption = "@{} ({}) to move.".format(match.get_name(turn_id), match.get_color(turn_id)))
-        elif tokens[0] == "/show" or tokens[0] == "/show@TeleChessRobot":
+        elif tokens[0] == "تصویر" or tokens[0] == "/show" or tokens[0] == "/show@TeleChessRobot":
             if match == None:
                 bot.sendMessage(chat_id, "There is no chess match going on.")
             elif match.white_id == None or match.black_id == None:
@@ -221,10 +235,10 @@ class tgchessBot(telepot.Bot):
             else:
                 filename = match.print_board(chat_id)
                 turn_id = match.get_turn_id()
-                bot.sendPhoto(chat_id, open(filename, "rb"), caption = "{} ({}) to move.".format(match.get_name(turn_id), match.get_color(turn_id)))
-        elif tokens[0] == "/move" or tokens[0] == "/move@TeleChessRobot" or (match and match.parse_move(tokens[0])): # !move <SAN move>
+                bot.sendPhoto(chat_id, open(filename, "rb")) #, caption = "@{} ({}) to move.".format(match.get_name(turn_id), match.get_color(turn_id)))
+        elif tokens[0] == "حرکت" or tokens[0] == "/move" or tokens[0] == "/move@TeleChessRobot" or (match and match.parse_move(tokens[0])): # !move <SAN move>
             if match == None:
-                bot.sendMessage(chat_id, "There is no chess match going on.")
+                bot.sendMessage(chat_id, text[3][self.lang(chat_id)])
             elif not self.is_in_game(players, sender_id):
                 bot.sendMessage(chat_id, "You are not involved in the chess match.")
             elif match.get_turn_id() != sender_id:
@@ -236,19 +250,17 @@ class tgchessBot(telepot.Bot):
                 move = tokens[0] if match.parse_move(tokens[0]) else ''.join(tokens[1:])
                 res = match.make_move(move)
                 if res == "Invalid":
-                    bot.sendMessage(chat_id, "`{}` is not a valid move.".format(move), parse_mode = "Markdown")
+                    bot.sendMessage(chat_id, text[11][self.lang(chat_id)].format(move), parse_mode = "Markdown")
                 else:
                     if had_offer:
                         bot.sendMessage(chat_id, 'Draw offer cancelled.')
                     filename = match.print_board(chat_id)
                     if res == "Checkmate":
-                        bot.sendPhoto(chat_id, open(filename, "rb"), caption = "Checkmate!")
+                        bot.sendMessage(chat_id, text[12][self.lang(chat_id)])
                         self.game_end(chat_id, players, match.get_color(sender_id))
                     elif res == "Stalemate":
-                        bot.sendPhoto(chat_id, open(filename, "rb"), caption = "Stalemate!")
+                        bot.sendMessage(chat_id, text[13][self.lang(chat_id)])
                         self.game_end(chat_id, players, "Draw")
-                    # elif res == "Check":
-                    #     bot.sendPhoto(chat_id, open(filename, "rb"), caption = "Check!")
                     else:
                         # AI move codes
                         ai_move = match.ai_move()
@@ -258,17 +270,15 @@ class tgchessBot(telepot.Bot):
                         
                         filename = match.print_board(chat_id)
                         if res == "Checkmate":
-                            bot.sendPhoto(chat_id, open(filename, "rb"), caption = "Checkmate!")
+                            bot.sendMessage(chat_id, text[12][self.lang(chat_id)])
                             self.game_end(chat_id, players, match.get_color(sender_id))
                         elif res == "Stalemate":
-                            bot.sendPhoto(chat_id, open(filename, "rb"), caption = "Stalemate!")
+                            bot.sendMessage(chat_id, text[13][self.lang(chat_id)])
                             self.game_end(chat_id, players, "Draw")
                         elif res == "Check":
-                            bot.sendPhoto(chat_id, open(filename, "rb"), caption = "Check!")
+                            bot.sendMessage(chat_id, text[14][self.lang(chat_id)])
                         else:
                             turn_id = match.get_turn_id()
-                            bot.sendPhoto(chat_id, open(filename, "rb"), caption = "@{} ({}) to move.".format(match.get_name(turn_id), match.get_color(turn_id)))
-
 
         elif tokens[0] == "/offerdraw" or tokens[0] == "/offerdraw@TeleChessRobot": # Offer a draw
             if match == None:
@@ -301,20 +311,20 @@ class tgchessBot(telepot.Bot):
                 self.game_end(chat_id, players, "Draw")
             else:
                 bot.sendMessage(chat_id, "Current match situation does not warrant a draw.")
-        elif tokens[0] == "/resign" or tokens[0] == "/resign@TeleChessRobot":
+        elif tokens[0] == "لغو" or tokens[0] == "/resign" or tokens[0] == "/resign@TeleChessRobot":
             if match == None:
-                bot.sendMessage(chat_id, "There is no chess match going on.")
+                bot.sendMessage(chat_id, text[3][self.lang(chat_id)])
             elif not self.is_in_game(players, sender_id):
                 bot.sendMessage(chat_id, "You are not involved in the chess match.")
             else:
-                bot.sendMessage(chat_id, "`{} ({}) resigns!`".format(sender_username, match.get_color(sender_id)), parse_mode='Markdown')
+                bot.sendMessage(chat_id, text[15][self.lang(chat_id)].format(sender_username, match.get_color(sender_id)), parse_mode='Markdown')
                 self.game_end(chat_id, players, match.get_opp_color(sender_id))
-        elif tokens[0] == "/stats" or tokens[0] == "/stats@TeleChessRobot":
+        elif tokens[0] == "آمار" or tokens[0] == "/stats" or tokens[0] == "/stats@TeleChessRobot":
             if sender_id not in self.statslog:
-                bot.sendMessage(chat_id, "You have not completed any games with @TeleChessRobot.")
+                bot.sendMessage(chat_id, text[16][self.lang(chat_id)])
             else:
                 pstats = self.statslog[sender_id]
-                bot.sendMessage(chat_id, "{}: {} wins, {} draws, {} losses.".format(sender_username, pstats[0], pstats[1], pstats[2]))
+                bot.sendMessage(chat_id, text[17][self.lang(chat_id)].format(sender_username, pstats[0], pstats[1], pstats[2]))
 
     def on_callback_query(self, msg):
         '''Handle callback queries for choosing color'''
@@ -330,11 +340,15 @@ class tgchessBot(telepot.Bot):
         match = self.gamelog[chat_id] if chat_id in self.gamelog.keys() else None
         players = match.get_players() if match != None else None
 
-        if match != None:
-            bot.sendMessage(chat_id, "There is already a chess match going on.")
-        else:
-            color = query_data
-            self.create_game(chat_id, sender_id, sender_username, color)
+        if query_data in ['fa', 'en']:
+            self.init_stats(sender_id, query_data)
+            
+        elif query_data in ['white', 'black']:
+            if match != None:
+                bot.sendMessage(chat_id, text[9][self.lang(chat_id)])
+            else:
+                color = query_data
+                self.create_game(chat_id, sender_id, sender_username, color)
 
     def on_inline_query(self, msg):
         '''Handles online queries by dynamically checking if it matches any keywords in the bank'''

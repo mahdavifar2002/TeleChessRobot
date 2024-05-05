@@ -1,6 +1,8 @@
 import chess # https://github.com/niklasf/python-chess
 import chess.engine
+import chess.svg
 from renderer import *
+import cairosvg
 
 class Match():
     '''Class to handle match related stuff and interface with python-chess'''
@@ -15,6 +17,7 @@ class Match():
         self.draw_offer = None
         self.imgurid = None
         self.drawoffer = None
+        self.ai_level = 1
 
     def joinw(self, pid, pname):
         '''Player joins as White'''
@@ -118,11 +121,15 @@ class Match():
 
     def ai_move(self):
         engine = chess.engine.SimpleEngine.popen_uci("stockfish")
-        limit = chess.engine.Limit(time=1.0)
+        limit = chess.engine.Limit(time=self.ai_level)
         engine.play(self.board, limit)
         m = engine.play(self.board, limit).move.uci()
         engine.quit()
         return m
+    
+    def undo_move(self):
+        self.board.pop()
+        self.board.pop()
 
     def offer_draw(self, sender_id):
         '''Offer a draw'''
@@ -132,11 +139,27 @@ class Match():
         '''Offer rejected either explicitly or when a move is made'''
         self.drawoffer = None
 
+    # SVG of the board
+    def svg_board(self):
+        return chess.svg.board(
+            board=self.board,
+            orientation=self.board.turn,
+            size=390,
+            lastmove=self.board.peek() if self.board.move_stack else None,
+            check=self.board.king(self.turn) if self.board.is_check() else None)
+
     # Return an image
     def print_board(self, chat_id):
         '''Sends fen to renderer class to draw current chessboard'''
         renderer = Renderer(self.board.turn)
-        filename = './matches/{}.jpg'.format('tgchessbot_'+str(chat_id))
-        fen = self.board.fen().split()[0]
-        img = renderer.draw_fen(fen).save(filename, "JPEG")
-        return filename
+        # filename = './matches/{}.jpg'.format('tgchessbot_'+str(chat_id))
+        # fen = self.board.fen().split()[0]
+        # img = renderer.draw_fen(fen).save(filename, "JPEG")
+        svg_filename = './matches/{}.svg'.format('tgchessbot_'+str(chat_id))
+        with open(svg_filename, 'w') as file:
+            file.write(self.svg_board())
+
+        png_filename = './matches/{}.png'.format('tgchessbot_'+str(chat_id))
+        cairosvg.svg2png(url=svg_filename, write_to=png_filename)
+
+        return png_filename

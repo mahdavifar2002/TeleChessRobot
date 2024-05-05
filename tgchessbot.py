@@ -1,5 +1,7 @@
 import time, pickle, os.path
 import telepot  # https://github.com/nickoala/telepot
+from telepot.loop import MessageLoop
+from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from match import *
 
 class tgchessBot(telepot.Bot):
@@ -28,9 +30,7 @@ class tgchessBot(telepot.Bot):
         startsheet += "`@TeleChessRobot /stats` displays how many wins, draws and losses you accumulated across all games you have played via @TeleChessRobot. If user base grows sufficiently large, we intend to incorporate a global ELO rating system.\n\n"
         startsheet += "At the moment, we are unable to support inline commands to play your matches unfortunately.\n\n"
         startsheet += "*Contact*\n\n"
-        startsheet += "This bot is built with the help of [`telepot`](https://github.com/nickoala/telepot), [`python-chess`](https://github.com/niklasf/python-chess) and [`Pillow`](https://pillow.readthedocs.io/en/3.2.x/), with chess piece images from [Cburnett](https://en.wikipedia.org/wiki/User:Cburnett) on [Wikipedia](https://en.wikipedia.org/wiki/Chess_piece).\n\n"
-        startsheet += "For more information, visit https://github.com/cxjdavin/tgchessbot/\n"
-        startsheet += "Contact me at `tgchessbot@gmail.com` for bug reports, etc."
+        startsheet += "Contact me at @mahdavifar2002 for bug reports, etc."
 
         helpsheet = "Allowed commands:\n"
         helpsheet += "`/help`: Display help sheet\n"
@@ -38,6 +38,8 @@ class tgchessBot(telepot.Bot):
         helpsheet += "`/join`: Join the existing match\n"
         helpsheet += "`/show`: Show current board state\n"
         helpsheet += "`/move <move>` or `<move>`: Make a move using SAN or UCI. E.g. `/move e4` or `/move e2e4`, `/move Nf3` or `g1f3`. To learn more: [https://en.wikipedia.org/wiki/Algebraic_notation_(chess)]\n"
+        helpsheet += "`/undo`: Unmake the last move of computer and yours.\n"
+        helpsheet += "`/level <number>`: Change level of game difficulty. The number represents how long (in second) the computer will think before making the move.\n"
         helpsheet += "`/offerdraw`: Offer a draw. Making a move automatically cancels any existing draw offers.\n"
         helpsheet += "`/rejectdraw`: Reject opponent's draw offer. Making a move automatically rejects any existing draw offers.\n"
         helpsheet += "`/claimdraw`: Accept a draw offer or claim a draw when `fifty-move rule` or `threefold repetition` is met. To learn more: [https://en.wikipedia.org/wiki/Draw_(chess)]\n"
@@ -127,6 +129,23 @@ class tgchessBot(telepot.Bot):
 
     def get_games_involved(self, sender_id):
         return [g for g in self.gamelog.values() if self.is_in_game(g.get_players(), sender_id)]
+    
+    def create_game(self, chat_id, sender_id, sender_username, color):
+        self.gamelog[chat_id] = Match(chat_id)
+        match = self.gamelog[chat_id]
+
+        bot.sendMessage(chat_id, "Chess match created. {} is playing as {}.".format(sender_username, color), parse_mode = "Markdown")
+
+        if color == "white":
+            match.joinw(sender_id, sender_username)
+            match.joinb(-1, "Computer")
+        else:
+            match.joinb(sender_id, sender_username)
+            match.joinw(-1, "Computer")
+            ai_move = match.ai_move()
+            res = match.make_move(ai_move)
+            bot.sendMessage(chat_id, ai_move)
+
 
     def on_chat_message(self, msg):
         self.msglog.append(msg)
@@ -147,25 +166,39 @@ class tgchessBot(telepot.Bot):
             bot.sendMessage(chat_id, self.startsheet, parse_mode = "Markdown", disable_web_page_preview = True)
         elif tokens[0] == "/help" or tokens[0] == "/help@TeleChessRobot":
             bot.sendMessage(chat_id, self.helpsheet, parse_mode = "Markdown", disable_web_page_preview = True)
+        elif tokens[0] == "/undo" or tokens[0] == "/undo@TeleChessRobot":
+            if match == None:
+                bot.sendMessage(chat_id, "There is no chess match going on.")
+            else:
+                try:
+                    match.undo_move()
+                    bot.sendMessage(chat_id, "Undo is done.", parse_mode = "Markdown", disable_web_page_preview = True)
+                except:
+                    bot.sendMessage(chat_id, "Can't undo.", parse_mode = "Markdown", disable_web_page_preview = True)
+        elif tokens[0] == "/level" or tokens[0] == "/level@TeleChessRobot":
+            if len(tokens) < 2 or not tokens[1].isdigit():
+                bot.sendMessage(chat_id, "Incorrect usage. `Usage: /level <number>`. E.g. `/level 2`", parse_mode='Markdown')
+            elif match == None:
+                bot.sendMessage(chat_id, "There is no chess match going on.")
+            else:
+                match.level = int(tokens[1])
+                bot.sendMessage(chat_id, "Level updated.")
         elif tokens[0] == "/create" or tokens[0] == "/create@TeleChessRobot":
             # !create <current player color: white/black>
-            if len(tokens) < 2:
-                bot.sendMessage(chat_id, "Incorrect usage. `Usage: /create <White/Black>`. E.g. `/create white`", parse_mode='Markdown')
-            tokens[1] = tokens[1].lower()
-            if tokens[1] != "white" and tokens[1] != "black":
-                bot.sendMessage(chat_id, "Incorrect usage. `Usage: /create <White/Black>`. E.g. `/create white`", parse_mode='Markdown')
-            elif match != None:
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text='⬜', callback_data='white'), InlineKeyboardButton(text='⬛', callback_data='black')],
+            ])
+
+            if match != None:
                 bot.sendMessage(chat_id, "There is already a chess match going on.")
+            elif len(tokens) < 2:
+                bot.sendMessage(chat_id, "Choose your color:", parse_mode='Markdown', reply_markup=keyboard)
             else:
-                self.gamelog[chat_id] = Match(chat_id)
-                match = self.gamelog[chat_id]
-                if tokens[1] == "white":
-                    match.joinw(sender_id, sender_username)
-                    match.joinb(-1, "AI")
+                color = tokens[1].lower()
+                if color != "white" and color != "black":
+                    bot.sendMessage(chat_id, "Choose your color:", parse_mode='Markdown', reply_markup=keyboard)
                 else:
-                    match.joinb(sender_id, sender_username)
-                    match.joinw(-1, "AI")
-                bot.sendMessage(chat_id, "Chess match created. {} is playing as {}.".format(sender_username, tokens[1]), parse_mode = "Markdown")
+                    self.create_game(chat_id, sender_id, sender_username, color)
         elif tokens[0] == "/join" or tokens[0] == "/join@TeleChessRobot":
             if match == None:
                 bot.sendMessage(chat_id, "There is no chess match going on.")
@@ -284,9 +317,24 @@ class tgchessBot(telepot.Bot):
                 bot.sendMessage(chat_id, "{}: {} wins, {} draws, {} losses.".format(sender_username, pstats[0], pstats[1], pstats[2]))
 
     def on_callback_query(self, msg):
-        '''Just logs the message. Does nothing for now'''
+        '''Handle callback queries for choosing color'''
         self.msglog.append(msg)
-        print(msg)
+        query_id, chat_id, query_data = telepot.glance(msg, flavor='callback_query')
+        sender_id, sender_username = self.get_sender_details(msg)
+        print(msg, sender_id, sender_username)
+
+        print('Callback Query:', query_id, chat_id, query_data)
+
+        bot.answerCallbackQuery(query_id, text='Got it')
+
+        match = self.gamelog[chat_id] if chat_id in self.gamelog.keys() else None
+        players = match.get_players() if match != None else None
+
+        if match != None:
+            bot.sendMessage(chat_id, "There is already a chess match going on.")
+        else:
+            color = query_data
+            self.create_game(chat_id, sender_id, sender_username, color)
 
     def on_inline_query(self, msg):
         '''Handles online queries by dynamically checking if it matches any keywords in the bank'''

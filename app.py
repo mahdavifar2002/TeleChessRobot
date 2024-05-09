@@ -3,7 +3,7 @@ import telepot  # https://github.com/nickoala/telepot
 from telepot.loop import MessageLoop
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from match import *
-from phrases import text
+from translation import text
 
 class tgchessBot(telepot.Bot):
     def __init__(self, *args, **kwargs):
@@ -52,31 +52,31 @@ class tgchessBot(telepot.Bot):
 
     def save_state(self):
         '''Saves gamelog, msglog and statslog for persistence'''
-        with open("gamelog.txt", "wb") as f:
+        with open(".gamelog.txt", "wb") as f:
             pickle.dump(self.gamelog, f)
 
-        with open("msglog.txt", "wb") as f:
+        with open(".msglog.txt", "wb") as f:
             pickle.dump(self.msglog, f)
 
-        with open("statslog.txt", "wb") as f:
+        with open(".statslog.txt", "wb") as f:
             pickle.dump(self.statslog, f)
 
     def load_state(self):
         '''Loads gamelog, msglog and statslog for persistence'''
         try:
-            with open("gamelog.txt", "rb") as f:
+            with open(".gamelog.txt", "rb") as f:
                 self.gamelog = pickle.load(f)
         except EOFError:
             self.gamelog = {}
 
         try:
-            with open("msglog.txt", "rb") as f:
+            with open(".msglog.txt", "rb") as f:
                 self.msglog = pickle.load(f)
         except EOFError:
             self.msglog = []
 
         try:
-            with open("statslog.txt", "rb") as f:
+            with open(".statslog.txt", "rb") as f:
                 self.statslog = pickle.load(f)
         except EOFError:
             self.statslog = {}
@@ -379,14 +379,14 @@ telegram_bot_token = "7034924272:AAFX4c25CQwjdgJrTDRnWar37S_7NnVsqhU"
 bot = tgchessBot(telegram_bot_token)
 
 # For persistence
-if not os.path.exists("gamelog.txt"):
-    with open("gamelog.txt", "wb") as f:
+if not os.path.exists("data/gamelog.txt"):
+    with open(".gamelog.txt", "wb") as f:
         pickle.dump({}, f)
-if not os.path.exists("msglog.txt"):
-    with open("msglog.txt", "wb") as f:
+if not os.path.exists(".msglog.txt"):
+    with open(".msglog.txt", "wb") as f:
         pickle.dump([], f)
-if not os.path.exists("statslog.txt"):
-    with open("statslog.txt", "wb") as f:
+if not os.path.exists(".statslog.txt"):
+    with open(".statslog.txt", "wb") as f:
         pickle.dump({}, f)
 bot.load_state()
 print("Previous state loaded.")

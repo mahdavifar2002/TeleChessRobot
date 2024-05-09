@@ -5,7 +5,7 @@ For the full command list, type `/help`.
 Contact me at @mahdavifar2002 for bug reports, etc.""",
         'fa': """سلام! به ربات شطرنج تلگرام @TeleChessRobot خوش آمدید.
 برای اطلاع از لیست دستورات، `راهنما` را وارد کنید.
-در صورت مشاهده‌ی هرگونه باگ با من به آی‌دی @mahdavifar2002 پیام دهید."""
+در صورت مشاهده‌ی هرگونه باگ به من به آی‌دی @mahdavifar2002 پیام دهید."""
     },
 
     {
